@@ -1,11 +1,12 @@
 const express = require('express');
 const Comment = require('../models/Comment');
+const protect = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 //Add a comment 
 
-router.post('/', async (req, res) => {
+router.post('/', protect,  async (req, res) => {
     try{
         const {text, author, post } = req.body;
         const newComment = await 
@@ -30,7 +31,7 @@ router.get('/:postId', async (req, res) => {
 
 //Delete a comment 
 
-router.delete('/:Id', async (req, res) => {
+router.delete('/:Id', protect,  async (req, res) => {
     try{
         const deletedComment = await 
         Comment.findbyIdAndDelete(req.params.id );

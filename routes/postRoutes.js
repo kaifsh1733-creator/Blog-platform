@@ -1,11 +1,12 @@
 const express = require('express');
 const Post = require('../models/post');
+const protect = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 //Create a post 
 
-router.post('/', async (req, res) => {
+router.post('/', protect,  async (req, res) => {
     try{
         const {title, content, author, tags } =req.body;
         const newpost = await Post.create({ title, content, author, tags });
@@ -45,7 +46,7 @@ router.get('/:id', async (req, res) => {
 
 //Update a post 
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', protect,  async (req, res) => {
     try{
         const updatedposts = await Post.findById(req.params.id, req.body, {new: true});
         if (!updatedpost) {
@@ -60,7 +61,7 @@ router.put('/:id', async (req, res) => {
 
 //Delete a post 
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', protect,  async (req, res) => {
     try{
         const posts = await Post.findById(req.params.id);
         if (!deletedpost) {
@@ -75,7 +76,7 @@ router.delete('/:id', async (req, res) => {
 
 //like / unlike a post
 
-router.put('/:id/like', async (req, res) => {
+router.put('/:id/like', protect, async (req, res) => {
     try{
         const {userId} = req.body;
         const post = await Post.findById(req.params.id);
