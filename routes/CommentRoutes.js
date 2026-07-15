@@ -22,8 +22,8 @@ router.post('/', protect,  async (req, res) => {
 router.get('/:postId', async (req, res) => {
     try{
         const comments = await 
-        comment.find({post: req.params.postId }).populate('author', 'name email');
-        res.status(200).json(Comments);
+        Comment.find({post: req.params.postId }).populate('author', 'name email');
+        res.status(200).json(comments);
     } catch (err) {
         res.status(500).json({ message: "Server eror", error: err.message });
     }
@@ -31,10 +31,10 @@ router.get('/:postId', async (req, res) => {
 
 //Delete a comment 
 
-router.delete('/:Id', protect,  async (req, res) => {
+router.delete('/:id', protect,  async (req, res) => {
     try{
         const deletedComment = await 
-        Comment.findbyIdAndDelete(req.params.id );
+        Comment.findByIdAndDelete(req.params.id );
         if (!deletedComment) {
             res.status(404).json({ message: 'comment not found'});
         }

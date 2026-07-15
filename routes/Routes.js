@@ -34,7 +34,7 @@ bcrypts.compare(password , user.password);
 if (!isMatch) { return res.status(400).json({message:'Invalid email or password'});
 }
 const token = jwt.sign({id: user ._id}, process.env.JWT_SECRET, {expiresIn: '7d'});
-res.status(200).json({message: 'Login successful', token, userId: user ._id });
+res.status(200).json({message: 'Login successful', token, user: {userId: user ._id, name: user.name, email: user.email,}, });
 } catch (err) {
     res.status(500).json({message: 'Server error', error: err.message});
 }

@@ -1,5 +1,5 @@
 const express = require('express');
-const Post = require('../models/post');
+const Post = require('../models/Post');
 const protect = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -13,6 +13,7 @@ router.post('/', protect,  async (req, res) => {
         res.status(201).json(newpost); 
     }
     catch (err) { 
+                console.log(err);
         res.status(500).json({message: 'server error', error: err.message});
     }
 });
@@ -20,26 +21,37 @@ router.post('/', protect,  async (req, res) => {
 //Get all posts 
 
 router.get('/', async (req, res) => {
-    try{
-        const posts = await Post.find().populate('author', 'name email');
-        res.status(200).json(posts);
-    }
-    catch (err) {
-        res.status(500).json({message: 'server error', error: err.message});
-    }
+  try {
+    const search = req.query.search || "";
+
+    const posts = await Post.find({
+      $or: [
+        { title: { $regex: search, $options: "i" } },
+        { content: { $regex: search, $options: "i" } },
+        { tags: { $regex: search, $options: "i" } },
+      ],
+    }).populate("author", "name email");
+
+    res.status(200).json(posts);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
 });
 
 //Get single post by id
 
 router.get('/:id', async (req, res) => {
     try{
-        const posts = await post.findById(req.params.id).populate('author', 'name email');
+        const post = await Post.findById(req.params.id).populate('author', 'name email');
         if (!post) {
             return res.status(404).json({message: 'post not found'});
         }
-        res.status(200).json(posts);
+        res.status(200).json(post);
     }
     catch (err) {
+                console.log(err);
         res.status(500).json({message: 'server error', error: err.message});
     }
 });
@@ -48,13 +60,14 @@ router.get('/:id', async (req, res) => {
 
 router.put('/:id', protect,  async (req, res) => {
     try{
-        const updatedposts = await Post.findById(req.params.id, req.body, {new: true});
-        if (!updatedpost) {
+        const updatedPost = await Post.findByIdAndUpdate(req.params.id, req.body, {new: true});
+        if (!updatedPost) {
             return res.status(404).json({message: 'post not found'});
         }
-        res.status(200).json(updatedpost);
+        res.status(200).json(updatedPost);
     }
     catch (err) {
+                console.log(err);
         res.status(500).json({message: 'server error', error: err.message});
     }
 });
@@ -63,37 +76,56 @@ router.put('/:id', protect,  async (req, res) => {
 
 router.delete('/:id', protect,  async (req, res) => {
     try{
-        const posts = await Post.findById(req.params.id);
-        if (!deletedpost) {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
             return res.status(404).json({message: 'post not found'});
         }
+        await post.deleteOne();
+        
         res.status(200).json({message: 'post deleted successfully'});
     }
     catch (err) {
+                console.log(err);
         res.status(500).json({message: 'server error', error: err.message});
     }
 });
 
 //like / unlike a post
 
-router.put('/:id/like', protect, async (req, res) => {
-    try{
-        const {userId} = req.body;
-        const post = await Post.findById(req.params.id);
-        if (!post) {
-            return res.status(404).json({message: 'post not found'});
-        }
-        const alreadyLiked = post.likes.includes(userId);
-        if (alreadyLiked) {
-            post.likes = post.likes.filter((id) => id.toString() !== userId);
-        } else {
-            post.likes.push(userId);
-        }
-        await post.save();
-        res.status(200).json({likescount: post.likes.length, likes: post.likes});
+router.put("/:id/like", protect, async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
     }
-    catch (err) {
-        res.status(500).json({message: 'server error', error: err.message});
+
+    let updatedPost;
+
+    if (post.likes.some(id => id.toString() === userId)) {
+      updatedPost = await Post.findByIdAndUpdate(
+        req.params.id,
+        { $pull: { likes: userId } },
+        { new: true }
+      );
+    } else {
+      updatedPost = await Post.findByIdAndUpdate(
+        req.params.id,
+        { $addToSet: { likes: userId } },
+        { new: true }
+      );
     }
+
+    return res.status(200).json(updatedPost);
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      message: err.message,
+    });
+  }
 });
+
 module.exports = router;

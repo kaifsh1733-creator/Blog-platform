@@ -11,7 +11,7 @@ const commentSchema = new mongoose.Schema({
     },
     post: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'post',
+        ref: 'Post',
         required: true,
     },
  }, { timestamps: true});
