@@ -40,6 +40,22 @@ router.get('/', async (req, res) => {
   }
 });
 
+//My Posts
+
+router.get("/myposts", protect, async (req, res) => {
+  try {
+    const posts = await Post.find({ author: req.userId })
+      .populate("author", "name email")
+      .sort({ createdAt: -1 });
+
+    res.json(posts);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+});
+
 //Get single post by id
 
 router.get('/:id', async (req, res) => {

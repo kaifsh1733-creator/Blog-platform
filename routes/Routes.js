@@ -2,6 +2,8 @@ const express = require('express');
 const bcrypts = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const protect = require('../middleware/authMiddleware');
+const upload = require("../middleware/upload");
 
 const router = express.Router();
 
@@ -39,5 +41,81 @@ res.status(200).json({message: 'Login successful', token, user: {userId: user ._
     res.status(500).json({message: 'Server error', error: err.message});
 }
 });
+
+//User profile
+
+router.get("/profile", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select("-password");
+
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+});
+
+// Update Profile
+
+router.put("/profile", protect, async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    user.name = name || user.name;
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+});
+
+//profile image
+
+router.put(
+  "/profile/image",
+  protect,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      const user = await User.findById(req.userId);
+
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+
+      user.profileImage = req.file.path;
+
+      await user.save();
+
+      res.status(200).json({
+        message: "Profile image uploaded",
+        profileImage: user.profileImage,
+      });
+    } catch (err) {
+      res.status(500).json({
+        message: err.message,
+      });
+    }
+  }
+);
 
 module.exports = router;
