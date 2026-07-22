@@ -1,16 +1,24 @@
 const express = require('express');
 const Post = require('../models/Post');
 const protect = require('../middleware/authMiddleware');
+const upload = require("../middleware/upload");
 
 const router = express.Router();
 
 //Create a post 
 
-router.post('/', protect,  async (req, res) => {
+router.post("/", protect, upload.single("coverImage"), async (req, res) => {
     try{
-        const {title, content, author, tags } =req.body;
-        const newpost = await Post.create({ title, content, author, tags });
-        res.status(201).json(newpost); 
+       const { title, content, tags } = req.body;
+
+        const newpost = await Post.create({
+           title,
+           content,
+            tags,
+            coverImage: req.file ? req.file.path : "",
+            author: req.userId,
+  }); 
+    res.status(201).json(newpost);
     }
     catch (err) { 
                 console.log(err);
@@ -74,36 +82,68 @@ router.get('/:id', async (req, res) => {
 
 //Update a post 
 
-router.put('/:id', protect,  async (req, res) => {
-    try{
-        const updatedPost = await Post.findByIdAndUpdate(req.params.id, req.body, {new: true});
-        if (!updatedPost) {
-            return res.status(404).json({message: 'post not found'});
-        }
-        res.status(200).json(updatedPost);
+router.put('/:id', protect, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
     }
-    catch (err) {
-                console.log(err);
-        res.status(500).json({message: 'server error', error: err.message});
+
+    if (post.author.toString() !== req.userId) {
+      return res.status(403).json({
+        message: "You can only edit your own post",
+      });
     }
+
+    post.title = req.body.title || post.title;
+    post.content = req.body.content || post.content;
+    post.tags = req.body.tags || post.tags;
+
+    await post.save();
+
+    res.status(200).json(post);
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      message: "Server Error",
+      error: err.message,
+    });
+  }
 });
 
-//Delete a post 
+//Delete a post
 
-router.delete('/:id', protect,  async (req, res) => {
-    try{
-        const post = await Post.findById(req.params.id);
-        if (!post) {
-            return res.status(404).json({message: 'post not found'});
-        }
-        await post.deleteOne();
-        
-        res.status(200).json({message: 'post deleted successfully'});
+router.delete('/:id', protect, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({
+        message: "Post not found",
+      });
     }
-    catch (err) {
-                console.log(err);
-        res.status(500).json({message: 'server error', error: err.message});
+
+    if (post.author.toString() !== req.userId) {
+      return res.status(403).json({
+        message: "You can only delete your own post",
+      });
     }
+
+    await post.deleteOne();
+
+    res.status(200).json({
+      message: "Post deleted successfully",
+    });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      message: "Server Error",
+      error: err.message,
+    });
+  }
 });
 
 //like / unlike a post
@@ -119,19 +159,18 @@ router.put("/:id/like", protect, async (req, res) => {
     }
 
     let updatedPost;
-
-    if (post.likes.some(id => id.toString() === userId)) {
+     if (post.likes.some(id => id.toString() === userId)) {
       updatedPost = await Post.findByIdAndUpdate(
         req.params.id,
-        { $pull: { likes: userId } },
-        { new: true }
-      );
+       { $pull: { likes: userId } },
+       { new: true }
+      ).populate("author", "name email");
     } else {
       updatedPost = await Post.findByIdAndUpdate(
         req.params.id,
-        { $addToSet: { likes: userId } },
-        { new: true }
-      );
+      { $addToSet: { likes: userId } },
+      { new: true }
+      ).populate("author", "name email");
     }
 
     return res.status(200).json(updatedPost);
